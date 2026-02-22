@@ -6,7 +6,6 @@ Authorized: os, sys, python-dotenv modules, file operations
 """
 
 import os
-import sys
 
 try:
     from dotenv import load_dotenv
@@ -23,27 +22,50 @@ REQUIRED_KEYS = (
 )
 
 
-def load_config() -> None:
+def _env_paths() -> tuple[str, str]:
+    """
+    Return absolute paths for .env and .env.example inside ex02 directory,
+    regardless of current working directory.
+    """
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    env_path = os.path.join(base_dir, ".env")
+    example_path = os.path.join(base_dir, ".env.example")
+    return env_path, example_path
+
+
+def load_config() -> bool:
     """
     Load .env if python-dotenv exists.
-
-    Environment variables override values from .env automatically
-    (load_dotenv does not overwrite by default).
+    Environment variables override values from .env automatically because
+    load_dotenv does not overwrite existing variables by default.
+    Returns True if .env exists, False otherwise.
     """
+    env_path, _ = _env_paths()
+    env_exists = os.path.exists(env_path)
+
     if load_dotenv is None:
-        return
-    load_dotenv()
+        return env_exists
+
+    if env_exists:
+        load_dotenv(env_path)  # override=False by default
+
+    return env_exists
 
 
 def mask_secret(value: str) -> str:
     """Mask secret for display."""
+    if not value:
+        return ""
     if len(value) <= 4:
         return "*" * len(value)
     return value[:2] + "*" * (len(value) - 4) + value[-2:]
 
 
 def main() -> None:
-    print("ORACLE STATUS: Reading the Matrix.")
+    print("ORACLE STATUS: Reading the Matrix...")
+    print()
+
+    env_path, example_path = _env_paths()
 
     if load_dotenv is None:
         print("[WARNING] python-dotenv is not installed.")
@@ -52,15 +74,11 @@ def main() -> None:
         print("or (Poetry):")
         print("  poetry add python-dotenv")
         print("Continuing with OS environment variables only...")
+        print()
 
-    load_config()
+    env_exists = load_config()
 
-    missing = [k for k in REQUIRED_KEYS if not os.environ.get(k)]
-    if missing:
-        print("Configuration loaded (partial):")
-    else:
-        print("Configuration loaded:")
-
+    print("Configuration loaded:")
     mode = os.environ.get("MATRIX_MODE", "development")
     db = os.environ.get("DATABASE_URL", "")
     api_key = os.environ.get("API_KEY", "")
@@ -68,34 +86,51 @@ def main() -> None:
     zion = os.environ.get("ZION_ENDPOINT", "")
 
     print(f"Mode: {mode}")
-    print(
-        f"Database: {'Configured' if db else 'Missing DATABASE_URL'}"
-    )
-    print(
-        f"API Access: {'Authenticated' if api_key else 'Missing API_KEY'}"
-    )
-    print(f"Log Level: {log_level}")
-    print(
-        f"Zion Network: {'Online' if zion else 'Missing ZION_ENDPOINT'}"
-    )
 
+    if db:
+        print("Database: Connected to local instance")
+    else:
+        print("Database: Missing DATABASE_URL")
+
+    if api_key:
+        print("API Access: Authenticated")
+    else:
+        print("API Access: Missing API_KEY")
+
+    print(f"Log Level: {log_level}")
+
+    if zion:
+        print("Zion Network: Online")
+    else:
+        print("Zion Network: Missing ZION_ENDPOINT")
+
+    print()
     print("Environment security check:")
+
     if api_key:
         print(f"[OK] API_KEY masked: {mask_secret(api_key)}")
     else:
-        print("[WARN] No API_KEY set (use .env.example as a template)")
+        print("[WARN] API_KEY not set (use .env.example as a template)")
 
-    if os.path.exists(".env"):
-        print("[OK] .env file detected (make sure it's gitignored)")
+    if env_exists:
+        print("[OK] .env file detected")
     else:
-        print("[WARN] .env not found. You can create it from .env.example")
+        print("[WARN] .env not found (create it from .env.example)")
 
+    if os.path.exists(example_path):
+        print("[OK] .env.example present")
+    else:
+        print("[WARN] .env.example missing")
+
+    missing = [k for k in REQUIRED_KEYS if not os.environ.get(k)]
     if missing:
-        print("Missing configuration keys:")
+        print("[WARN] Missing configuration keys:")
         for key in missing:
             print(f"- {key}")
-        sys.exit(0)
+    else:
+        print("[OK] All required keys configured")
 
+    print()
     print("The Oracle sees all configurations.")
 
 

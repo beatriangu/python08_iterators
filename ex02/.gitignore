@@ -1,15 +1,29 @@
-# dotenv secrets
+# =========================
+# Environment variables
+# =========================
 .env
-.env.*
+!.env.example
 
-# python
+# =========================
+# Python cache
+# =========================
 __pycache__/
 *.py[cod]
 
-# venvs
+# =========================
+# Virtual environments
+# =========================
 venv/
 .venv/
 matrix_env/
 
-# artifacts
+# =========================
+# Generated artifacts
+# =========================
 *.png
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
